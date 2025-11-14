@@ -8,7 +8,7 @@ jobs:
   sync-to-jira:
     # Only run when "tracked" label is added
     if: github.event.label.name == 'tracked'
-    runs-on: self-hosted
+    runs-on: ubuntu-latest
     
     steps:
       - name: Checkout repository
