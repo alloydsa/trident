@@ -9,6 +9,7 @@ import sys
 import json
 import requests
 from base64 import b64encode
+from time import sleep
 
 def get_github_issue_body(issue_number, token, repo_name):
     """Fetch the full issue body from GitHub API."""
@@ -18,10 +19,15 @@ def get_github_issue_body(issue_number, token, repo_name):
     }
     
     url = f'https://api.github.com/repos/{repo_name}/issues/{issue_number}'
-    response = requests.get(url, headers=headers)
     
-    if response.status_code == 200:
-        return response.json().get('body', '')
+    try:
+        response = requests.get(url, headers=headers, timeout=10)
+        
+        if response.status_code == 200:
+            return response.json().get('body', '')
+    except Exception as e:
+        print(f"⚠️  Failed to fetch issue body: {e}")
+    
     return ''
 
 def create_jira_ticket(issue_data):
@@ -88,28 +94,58 @@ def create_jira_ticket(issue_data):
         # You may need to adjust this based on your Jira configuration
         jira_payload["fields"]["customfield_10008"] = epic_key
     
-    # Create the Jira issue
+    # Create the Jira issue with retry logic
     api_url = f"{jira_url}/rest/api/2/issue"
-    response = requests.post(api_url, headers=headers, json=jira_payload)
     
-    if response.status_code in [200, 201]:
-        jira_issue = response.json()
-        jira_key = jira_issue.get('key')
-        jira_issue_url = f"{jira_url}/browse/{jira_key}"
-        
-        print(f"✅ Successfully created Jira ticket: {jira_key}")
-        print(f"🔗 URL: {jira_issue_url}")
-        
-        # Add comment to GitHub issue with Jira link
-        repo_name = os.environ.get('GITHUB_REPOSITORY')
-        add_github_comment(issue_number, jira_key, jira_issue_url, github_token, repo_name)
-        
-        return jira_key
-    else:
-        print(f"❌ Failed to create Jira ticket")
-        print(f"Status Code: {response.status_code}")
-        print(f"Response: {response.text}")
-        sys.exit(1)
+    max_retries = 3
+    retry_delay = 2
+    
+    for attempt in range(max_retries):
+        try:
+            print(f"Creating Jira ticket (attempt {attempt + 1}/{max_retries})...")
+            response = requests.post(
+                api_url, 
+                headers=headers, 
+                json=jira_payload,
+                timeout=30
+            )
+            
+            if response.status_code in [200, 201]:
+                jira_issue = response.json()
+                jira_key = jira_issue.get('key')
+                jira_issue_url = f"{jira_url}/browse/{jira_key}"
+                
+                print(f"✅ Successfully created Jira ticket: {jira_key}")
+                print(f"🔗 URL: {jira_issue_url}")
+                
+                # Add comment to GitHub issue with Jira link
+                repo_name = os.environ.get('GITHUB_REPOSITORY')
+                add_github_comment(issue_number, jira_key, jira_issue_url, github_token, repo_name)
+                
+                return jira_key
+            else:
+                print(f"❌ Failed to create Jira ticket")
+                print(f"Status Code: {response.status_code}")
+                print(f"Response: {response.text}")
+                if attempt < max_retries - 1:
+                    print(f"Retrying in {retry_delay} seconds...")
+                    sleep(retry_delay)
+                    retry_delay *= 2  # Exponential backoff
+                else:
+                    sys.exit(1)
+                    
+        except (requests.exceptions.ChunkedEncodingError, 
+                requests.exceptions.ConnectionError,
+                requests.exceptions.Timeout) as e:
+            print(f"⚠️  Network error on attempt {attempt + 1}: {type(e).__name__}")
+            if attempt < max_retries - 1:
+                print(f"Retrying in {retry_delay} seconds...")
+                sleep(retry_delay)
+                retry_delay *= 2  # Exponential backoff
+            else:
+                print(f"❌ Failed after {max_retries} attempts")
+                print(f"Error: {str(e)}")
+                sys.exit(1)
 
 def add_github_comment(issue_number, jira_key, jira_url, github_token, repo_name):
     """Add a comment to the GitHub issue with the Jira ticket link."""
@@ -123,12 +159,15 @@ def add_github_comment(issue_number, jira_key, jira_url, github_token, repo_name
     url = f'https://api.github.com/repos/{repo_name}/issues/{issue_number}/comments'
     payload = {"body": comment_body}
     
-    response = requests.post(url, headers=headers, json=payload)
-    
-    if response.status_code == 201:
-        print(f"✅ Added comment to GitHub issue #{issue_number}")
-    else:
-        print(f"⚠️  Failed to add comment to GitHub issue (non-critical)")
+    try:
+        response = requests.post(url, headers=headers, json=payload, timeout=10)
+        
+        if response.status_code == 201:
+            print(f"✅ Added comment to GitHub issue #{issue_number}")
+        else:
+            print(f"⚠️  Failed to add comment to GitHub issue (non-critical)")
+    except Exception as e:
+        print(f"⚠️  Failed to add comment to GitHub issue: {e} (non-critical)")
 
 if __name__ == "__main__":
     issue_data = {
