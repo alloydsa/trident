@@ -26,8 +26,7 @@ jobs:
       - name: Create Jira ticket
         env:
           JIRA_URL: ${{ secrets.JIRA_URL }}
-          JIRA_EMAIL: ${{ secrets.JIRA_EMAIL }}
-          JIRA_API_TOKEN: ${{ secrets.JIRA_API_TOKEN }}
+          JIRA_PAT: ${{ secrets.JIRA_PAT }}
           JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
           JIRA_EPIC_KEY: ${{ secrets.JIRA_EPIC_KEY }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

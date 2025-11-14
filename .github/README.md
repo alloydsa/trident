@@ -18,8 +18,7 @@ In your GitHub repository settings (Settings → Secrets and variables → Actio
 
 #### Required Secrets:
 - **`JIRA_URL`**: Your Jira instance URL (e.g., `https://jira.ngage.netapp.com`)
-- **`JIRA_EMAIL`**: Email address for Jira authentication
-- **`JIRA_API_TOKEN`**: Jira API token (create at: https://id.atlassian.com/manage-profile/security/api-tokens)
+- **`JIRA_PAT`**: Jira Personal Access Token (create at: Profile → Personal Access Tokens in Jira)
 - **`JIRA_PROJECT_KEY`**: Jira project key (e.g., `TRID`)
 
 #### Optional Secrets:

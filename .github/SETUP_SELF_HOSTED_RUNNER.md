@@ -14,19 +14,21 @@ Since Jira requires VPN access, you need to run the workflow on a machine inside
 1. **Connect to your NetApp machine** (via SSH or direct access)
 
 2. **Verify Jira connectivity**:
+
    ```bash
    curl -I https://jira.ngage.netapp.com
    # Should return HTTP 200 or redirect, not connection refused
    ```
 
 3. **Install Python 3.11+** (if not already installed):
+
    ```bash
    # macOS
    brew install python@3.11
-   
+
    # Ubuntu/Debian
    sudo apt update && sudo apt install python3.11 python3-pip
-   
+
    # RHEL/CentOS
    sudo yum install python3.11 python3-pip
    ```
@@ -47,25 +49,27 @@ Since Jira requires VPN access, you need to run the workflow on a machine inside
 3. Select your OS (Linux/macOS/Windows)
 
 4. Follow the commands shown (example for Linux):
+
    ```bash
    # Create a folder
    mkdir actions-runner && cd actions-runner
-   
+
    # Download the latest runner package
    curl -o actions-runner-linux-x64-2.311.0.tar.gz -L \
      https://github.com/actions/runner/releases/download/v2.311.0/actions-runner-linux-x64-2.311.0.tar.gz
-   
+
    # Extract the installer
    tar xzf ./actions-runner-linux-x64-2.311.0.tar.gz
-   
+
    # Configure the runner
    ./config.sh --url https://github.com/alloydsa/trident --token YOUR_TOKEN_HERE
-   
+
    # Run the runner
    ./run.sh
    ```
 
 5. **Add labels** during configuration (optional but recommended):
+
    - When prompted, add label: `netapp-vpn` or `jira-access`
 
 6. **Keep it running**:
@@ -78,6 +82,7 @@ Since Jira requires VPN access, you need to run the workflow on a machine inside
 ### For Main Repository (NetApp/trident):
 
 If you need this on the main repo, you'll need admin access or request the NetApp team to:
+
 1. Set up the self-hosted runner on a NetApp machine
 2. Configure it at: https://github.com/NetApp/trident/settings/actions/runners
 
@@ -86,15 +91,16 @@ If you need this on the main repo, you'll need admin access or request the NetAp
 Go to: **https://github.com/alloydsa/trident/settings/secrets/actions**
 
 Add these secrets:
+
 - `JIRA_URL` = `https://jira.ngage.netapp.com`
-- `JIRA_EMAIL` = Your NetApp email
-- `JIRA_API_TOKEN` = Your Jira API token
+- `JIRA_PAT` = Your Jira Personal Access Token (get from Jira → Profile → Personal Access Tokens)
 - `JIRA_PROJECT_KEY` = `TRID`
 - `JIRA_EPIC_KEY` = `TRID-10984` (optional)
 
 ## Step 4: Test the Setup
 
 1. **Verify runner is online**:
+
    - Go to: https://github.com/alloydsa/trident/settings/actions/runners
    - Status should show "Idle" (green)
 
@@ -109,6 +115,7 @@ Add these secrets:
 ## Troubleshooting
 
 ### Runner Shows Offline
+
 ```bash
 # Check if runner service is running
 sudo ./svc.sh status
@@ -121,6 +128,7 @@ tail -f _diag/Runner_*.log
 ```
 
 ### Python Not Found
+
 ```bash
 # Add Python to PATH in runner config
 export PATH="/usr/local/bin:$PATH"
@@ -132,15 +140,17 @@ with:
 ```
 
 ### Jira Connection Fails
+
 ```bash
-# Test from the runner machine:
-curl -u "your.email@netapp.com:YOUR_API_TOKEN" \
+# Test from the runner machine using Personal Access Token:
+curl -H "Authorization: Bearer YOUR_PAT_TOKEN" \
   https://jira.ngage.netapp.com/rest/api/2/myself
 
 # Should return your Jira user info
 ```
 
 ### Permission Issues
+
 ```bash
 # Ensure runner user has access to Python
 which python3
@@ -161,19 +171,21 @@ sudo -u runner-user pip3 install requests
 ## Alternative: Use Existing CI/CD Infrastructure
 
 If NetApp already has Jenkins, GitLab CI, or other CI/CD infrastructure inside the VPN:
+
 1. Trigger it via webhook from GitHub
 2. Use that infrastructure to create Jira tickets
 3. No need for a dedicated GitHub Actions runner
 
 ## Cost Comparison
 
-| Solution | Setup Time | Maintenance | Cost |
-|----------|-----------|-------------|------|
-| Self-hosted runner | 30 min | Low | Free (uses existing hardware) |
-| Tasktop | 5 min | None | $$$ (licensing) |
-| Webhook service | 1-2 hours | Low | Free |
+| Solution           | Setup Time | Maintenance | Cost                          |
+| ------------------ | ---------- | ----------- | ----------------------------- |
+| Self-hosted runner | 30 min     | Low         | Free (uses existing hardware) |
+| Tasktop            | 5 min      | None        | $$$ (licensing)               |
+| Webhook service    | 1-2 hours  | Low         | Free                          |
 
 ---
 
 Need help with any step? Check the runner logs or GitHub Actions documentation:
+
 - https://docs.github.com/en/actions/hosting-your-own-runners

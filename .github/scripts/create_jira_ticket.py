@@ -37,8 +37,7 @@ def create_jira_ticket(issue_data):
     
     # Get environment variables
     jira_url = os.environ.get('JIRA_URL')
-    jira_email = os.environ.get('JIRA_EMAIL')
-    jira_token = os.environ.get('JIRA_API_TOKEN')
+    jira_pat = os.environ.get('JIRA_PAT')  # Personal Access Token
     project_key = os.environ.get('JIRA_PROJECT_KEY', 'TRID')
     epic_key = os.environ.get('JIRA_EPIC_KEY')  # Optional
     github_token = os.environ.get('GITHUB_TOKEN')
@@ -51,20 +50,16 @@ def create_jira_ticket(issue_data):
     repo_name = os.environ.get('GITHUB_REPOSITORY')  # e.g., "alloydsa/trident"
     
     # Validate required variables
-    if not all([jira_url, jira_email, jira_token, issue_number, issue_title, repo_name]):
+    if not all([jira_url, jira_pat, issue_number, issue_title, repo_name]):
         print("ERROR: Missing required environment variables")
         sys.exit(1)
     
     # Fetch full issue body from GitHub
     issue_body = get_github_issue_body(issue_number, github_token, repo_name)
     
-    # Prepare Jira authentication
-    auth_string = f"{jira_email}:{jira_token}"
-    auth_bytes = auth_string.encode('ascii')
-    auth_b64 = b64encode(auth_bytes).decode('ascii')
-    
+    # Prepare Jira authentication using Personal Access Token (PAT)
     headers = {
-        'Authorization': f'Basic {auth_b64}',
+        'Authorization': f'Bearer {jira_pat}',
         'Content-Type': 'application/json'
     }
     
