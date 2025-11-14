@@ -4,12 +4,14 @@ Script to create a Jira ticket from a GitHub issue.
 Triggered by GitHub Actions when 'tracked' label is added.
 """
 
+import json
 import os
 import sys
-import json
-import requests
 from base64 import b64encode
 from time import sleep
+
+import requests
+
 
 def get_github_issue_body(issue_number, token, repo_name):
     """Fetch the full issue body from GitHub API."""
@@ -177,5 +179,7 @@ if __name__ == "__main__":
         'author': os.environ.get('ISSUE_AUTHOR'),
         'labels': json.loads(os.environ.get('ISSUE_LABELS', '[]'))
     }
+    
+    create_jira_ticket(issue_data)
     
     create_jira_ticket(issue_data)
