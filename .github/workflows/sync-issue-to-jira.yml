@@ -2,12 +2,14 @@ name: Sync GitHub Issue to Jira
 
 on:
   issues:
-    types: [labeled]
+    types: [labeled, closed, reopened]
+  issue_comment:
+    types: [created]
 
 jobs:
   sync-to-jira:
     # Only run when "tracked" label is added
-    if: github.event.label.name == 'tracked'
+    if: github.event.label.name == 'tracked' && github.event_name == 'issues' && github.event.action == 'labeled'
     runs-on: ubuntu-latest
     
     steps:
@@ -38,3 +40,63 @@ jobs:
           ISSUE_LABELS: ${{ toJson(github.event.issue.labels.*.name) }}
         run: |
           python .github/scripts/create_jira_ticket.py
+
+  sync-status-to-jira:
+    # Run when issue is closed or reopened and has 'tracked' label
+    if: (github.event.action == 'closed' || github.event.action == 'reopened') && contains(github.event.issue.labels.*.name, 'tracked')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Sync status to Jira
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_PAT: ${{ secrets.JIRA_PAT }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          ISSUE_STATE: ${{ github.event.issue.state }}
+          ACTION: ${{ github.event.action }}
+        run: |
+          python .github/scripts/create_jira_ticket.py --sync-status
+
+  sync-comment-to-jira:
+    # Run when comment is added to tracked issue
+    if: github.event_name == 'issue_comment' && contains(github.event.issue.labels.*.name, 'tracked')
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: Install dependencies
+        run: |
+          pip install requests
+
+      - name: Sync comment to Jira
+        env:
+          JIRA_URL: ${{ secrets.JIRA_URL }}
+          JIRA_PAT: ${{ secrets.JIRA_PAT }}
+          JIRA_PROJECT_KEY: ${{ secrets.JIRA_PROJECT_KEY }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          ISSUE_NUMBER: ${{ github.event.issue.number }}
+          COMMENT_BODY: ${{ github.event.comment.body }}
+          COMMENT_AUTHOR: ${{ github.event.comment.user.login }}
+          COMMENT_URL: ${{ github.event.comment.html_url }}
+        run: |
+          python .github/scripts/create_jira_ticket.py --sync-comment
